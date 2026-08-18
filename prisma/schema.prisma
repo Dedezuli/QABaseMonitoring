@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  QA
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  DONE
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  NEED_REVISION
+  APPROVED
+}
+
+enum ActivityAction {
+  CREATED
+  EDITED
+  COAUTHOR_APPROVED
+  SUBMITTED
+  APPROVED
+  NEED_REVISION
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(QA)
+  createdAt    DateTime @default(now())
+
+  assignments      ProjectAssignment[]
+  reports          WeeklyReport[]        @relation("ReportAuthor")
+  reviewedReports  WeeklyReport[]        @relation("ReportReviewer")
+  uploadedDocs     ProjectDocument[]
+  coAuthorOn       ReportCoAuthor[]
+  activities       ReportActivity[]
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  code        String        @unique
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+
+  assignments ProjectAssignment[]
+  reports     WeeklyReport[]
+  documents   ProjectDocument[]
+}
+
+model ProjectAssignment {
+  id         String   @id @default(cuid())
+  projectId  String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model WeeklyReport {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+
+  weekStart DateTime
+  weekEnd   DateTime
+
+  summary      String @default("")
+  blocker      String @default("")
+  nextWeekPlan String @default("")
+  notes        String?
+
+  totalTestCase        Int @default(0)
+  totalTcBE             Int @default(0)
+  totalTcBEAutomated    Int @default(0)
+  totalTcBEPassed       Int @default(0)
+  totalTcBEFailed       Int @default(0)
+  totalTcFE             Int @default(0)
+  totalTcFEAutomated    Int @default(0)
+  totalTcFEPassed       Int @default(0)
+  totalTcFEFailed       Int @default(0)
+
+  productionIncidentCount Int     @default(0)
+  bugDocumentUrl          String?
+
+  status       ReportStatus @default(SUBMITTED)
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project    Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User                @relation("ReportAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?               @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  bugs       ProductionBug[]
+  coAuthors  ReportCoAuthor[]
+  activities ReportActivity[]
+}
+
+model ProductionBug {
+  id          String   @id @default(cuid())
+  reportId    String
+  title       String
+  description String?
+  link        String?
+  createdAt   DateTime @default(now())
+
+  report WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model ReportCoAuthor {
+  id         String    @id @default(cuid())
+  reportId   String
+  userId     String
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
+  addedAt    DateTime  @default(now())
+
+  report WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, userId])
+}
+
+model ReportActivity {
+  id            String         @id @default(cuid())
+  reportId      String
+  userId        String
+  action        ActivityAction
+  changedFields String?
+  createdAt     DateTime       @default(now())
+
+  report WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProjectDocument {
+  id           String   @id @default(cuid())
+  projectId    String
+  originalName String
+  filePath     String
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+}
