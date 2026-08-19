@@ -102,8 +102,10 @@ export default async function ReportDetailPage({
   const canView = session!.user.role === "ADMIN" || isOwner || isCoAuthor;
   if (!canView) redirect("/dashboard");
 
-  const isOwnerOrAdmin = session!.user.role === "ADMIN" || isOwner;
+  const isAdmin = session!.user.role === "ADMIN";
+  const canEditOrDelete = isAdmin || (isOwner && report.status !== "APPROVED");
 
+  const executedPct = pct(report.totalTcExecuted, report.totalTestCase);
   const bePassRate = pct(report.totalTcBEPassed, report.totalTcBEPassed + report.totalTcBEFailed);
   const fePassRate = pct(report.totalTcFEPassed, report.totalTcFEPassed + report.totalTcFEFailed);
   const beCoverage = pct(report.totalTcBEAutomated, report.totalTcBE);
@@ -139,7 +141,7 @@ export default async function ReportDetailPage({
           {isOwner && report.status === "DRAFT" && (
             <SubmitReportButton reportId={report.id} />
           )}
-          {isOwnerOrAdmin && (
+          {canEditOrDelete && (
             <>
               <Button
                 variant="outline"
@@ -246,11 +248,16 @@ export default async function ReportDetailPage({
             <h4 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
               OVERVIEW
             </h4>
-            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+            <div className="grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
               <MetricTile label="Total test case" value={report.totalTestCase} />
               <MetricTile
                 label="Total automated"
                 value={report.totalTcBEAutomated + report.totalTcFEAutomated}
+              />
+              <MetricTile label="TC Executed" value={report.totalTcExecuted} />
+              <MetricTile
+                label="Progress project"
+                value={`${executedPct}%`}
               />
             </div>
           </div>

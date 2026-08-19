@@ -50,6 +50,7 @@ export async function PATCH(
     nextWeekPlan: textToLines(report.nextWeekPlan),
     notes: report.notes ?? "",
     totalTestCase: report.totalTestCase,
+    totalTcExecuted: report.totalTcExecuted,
     totalTcBE: report.totalTcBE,
     totalTcBEAutomated: report.totalTcBEAutomated,
     totalTcBEPassed: report.totalTcBEPassed,

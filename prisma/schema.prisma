@@ -95,6 +95,8 @@ model WeeklyReport {
   notes        String?
 
   totalTestCase        Int @default(0)
+  totalTcExecuted      Int @default(0)
+
   totalTcBE             Int @default(0)
   totalTcBEAutomated    Int @default(0)
   totalTcBEPassed       Int @default(0)

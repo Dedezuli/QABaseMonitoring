@@ -8,7 +8,7 @@ import {
   weeklyTrend,
   type ReportForAggregate,
 } from "@/lib/dashboard-aggregate";
-import { automationSummary } from "@/lib/report-utils";
+import { automationSummary, pct } from "@/lib/report-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -82,6 +82,7 @@ export default async function AdminDashboardPage({
     userName: r.user.name,
     weekStart: r.weekStart,
     totalTestCase: r.totalTestCase,
+    totalTcExecuted: r.totalTcExecuted,
     totalTcBE: r.totalTcBE,
     totalTcBEAutomated: r.totalTcBEAutomated,
     totalTcFE: r.totalTcFE,
@@ -94,6 +95,27 @@ export default async function AdminDashboardPage({
   const byProject = aggregateByProject(forAggregate);
   const byUser = aggregateByUser(forAggregate);
   const trend = weeklyTrend(forAggregate);
+
+  // totalTcExecuted is cumulative per project, so it must come from each
+  // project's most recent report rather than being summed across weeks.
+  const progressByProject = new Map<
+    string,
+    { totalTestCase: number; totalTcExecuted: number; progressPct: number }
+  >();
+  for (const r of reports) {
+    if (progressByProject.has(r.project.id)) continue;
+    progressByProject.set(r.project.id, {
+      totalTestCase: r.totalTestCase,
+      totalTcExecuted: r.totalTcExecuted,
+      progressPct: pct(r.totalTcExecuted, r.totalTestCase),
+    });
+  }
+  const avgProgressPct = progressByProject.size
+    ? Math.round(
+        [...progressByProject.values()].reduce((sum, p) => sum + p.progressPct, 0) /
+          progressByProject.size
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -114,6 +136,10 @@ export default async function AdminDashboardPage({
           value={`${summary.overallPct}%`}
         />
         <SummaryCard label="Total Bug Production" value={summary.bugCount} />
+        <SummaryCard
+          label="Rata-rata Progress Project"
+          value={`${avgProgressPct}%`}
+        />
       </div>
 
       <Card>
@@ -134,14 +160,26 @@ export default async function AdminDashboardPage({
             {byProject.length === 0 && (
               <p className="text-sm text-muted-foreground">Tidak ada data.</p>
             )}
-            {byProject.map((g) => (
-              <PercentBar
-                key={g.key}
-                label={g.label}
-                value={g.overallPct}
-                detail={`${g.reportCount} report, ${g.totalTestCase} TC`}
-              />
-            ))}
+            {byProject.map((g) => {
+              const progress = progressByProject.get(g.key);
+              return (
+                <div key={g.key} className="space-y-2">
+                  <PercentBar
+                    label={g.label}
+                    value={g.overallPct}
+                    detail={`Automation · ${g.reportCount} report, ${g.totalTestCase} TC`}
+                  />
+                  {progress && (
+                    <PercentBar
+                      label="Progress pengerjaan"
+                      value={progress.progressPct}
+                      detail={`${progress.totalTcExecuted}/${progress.totalTestCase} TC executed`}
+                      className="pl-4"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
@@ -178,6 +216,8 @@ export default async function AdminDashboardPage({
                   <TableHead>QA</TableHead>
                   <TableHead>Periode</TableHead>
                   <TableHead>Total TC</TableHead>
+                  <TableHead>TC Executed</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead>Automation %</TableHead>
                   <TableHead>Bug Production</TableHead>
                   <TableHead>Status</TableHead>
@@ -187,7 +227,7 @@ export default async function AdminDashboardPage({
               <TableBody>
                 {reports.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground">
                       Tidak ada report untuk filter ini.
                     </TableCell>
                   </TableRow>
@@ -198,6 +238,8 @@ export default async function AdminDashboardPage({
                     <TableCell>{r.userName}</TableCell>
                     <TableCell>{formatDate(r.weekStart)}</TableCell>
                     <TableCell>{r.totalTestCase}</TableCell>
+                    <TableCell>{r.totalTcExecuted}</TableCell>
+                    <TableCell>{pct(r.totalTcExecuted, r.totalTestCase)}%</TableCell>
                     <TableCell>{automationSummary(r).overallPct}%</TableCell>
                     <TableCell>{r.bugCount}</TableCell>
                     <TableCell>

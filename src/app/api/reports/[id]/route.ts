@@ -54,6 +54,12 @@ export async function PUT(
   const { report, allowed } = await loadReportForUser(id, session.user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (report.status === "APPROVED" && session.user.role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Report yang sudah di-approve tidak bisa diedit" },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json();
   const isDraft = report.status === "DRAFT";
@@ -131,6 +137,7 @@ export async function PUT(
         nextWeekPlan: linesToText(data.nextWeekPlan),
         notes: data.notes || null,
         totalTestCase: data.totalTestCase,
+        totalTcExecuted: data.totalTcExecuted,
         totalTcBE: data.totalTcBE,
         totalTcBEAutomated: data.totalTcBEAutomated,
         totalTcBEPassed: data.totalTcBEPassed,
@@ -192,6 +199,12 @@ export async function DELETE(
   const { report, allowed } = await loadReportForUser(id, session.user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (report.status === "APPROVED" && session.user.role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Report yang sudah di-approve tidak bisa dihapus" },
+      { status: 403 }
+    );
+  }
 
   await prisma.weeklyReport.delete({ where: { id } });
 

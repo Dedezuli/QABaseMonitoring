@@ -46,6 +46,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const previous = await prisma.weeklyReport.findFirst({
+    where: { projectId: data.projectId },
+    orderBy: { weekStart: "desc" },
+    select: {
+      totalTestCase: true,
+      totalTcExecuted: true,
+      totalTcBE: true,
+      totalTcBEAutomated: true,
+      totalTcBEPassed: true,
+      totalTcBEFailed: true,
+      totalTcFE: true,
+      totalTcFEAutomated: true,
+      totalTcFEPassed: true,
+      totalTcFEFailed: true,
+    },
+  });
+
   const report = await prisma.$transaction(async (tx) => {
     const created = await tx.weeklyReport.create({
       data: {
@@ -55,6 +72,7 @@ export async function POST(request: NextRequest) {
         weekEnd: data.weekEnd,
         summary: "",
         status: "DRAFT",
+        ...previous,
         coAuthors: {
           create: [{ userId: user!.id }],
         },

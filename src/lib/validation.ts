@@ -30,6 +30,7 @@ const reportShape = {
   weekEnd: z.coerce.date(),
   notes: z.string().optional().default(""),
   totalTestCase: z.coerce.number().int().min(0),
+  totalTcExecuted: z.coerce.number().int().min(0),
   totalTcBE: z.coerce.number().int().min(0),
   totalTcBEAutomated: z.coerce.number().int().min(0),
   totalTcBEPassed: z.coerce.number().int().min(0),
@@ -65,6 +66,10 @@ export const reportSchema = z
   .refine((data) => data.totalTcBE + data.totalTcFE >= data.totalTestCase, {
     message: "Total BE + FE harus sama atau lebih besar dari jumlah total",
     path: ["totalTestCase"],
+  })
+  .refine((data) => data.totalTcExecuted <= data.totalTestCase, {
+    message: "TC executed tidak boleh melebihi total TC project",
+    path: ["totalTcExecuted"],
   })
   .refine((data) => data.totalTcBEAutomated <= data.totalTcBE, {
     message: "TC BE automated tidak boleh melebihi total TC BE",

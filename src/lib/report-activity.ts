@@ -36,6 +36,7 @@ const TRACKED_FIELDS = [
   "productionIncidentCount",
   "bugDocumentUrl",
   "totalTestCase",
+  "totalTcExecuted",
   "totalTcBE",
   "totalTcFE",
   "totalTcBEAutomated",

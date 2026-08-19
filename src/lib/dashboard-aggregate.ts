@@ -9,6 +9,7 @@ export type ReportForAggregate = {
   userName: string;
   weekStart: Date;
   totalTestCase: number;
+  totalTcExecuted: number;
   totalTcBE: number;
   totalTcBEAutomated: number;
   totalTcFE: number;

@@ -25,6 +25,7 @@ export default async function EditReportPage({
 
   if (!report) notFound();
   if (!isAdmin && report.userId !== userId) redirect("/dashboard");
+  if (!isAdmin && report.status === "APPROVED") redirect(`/reports/${report.id}`);
 
   const [projects, qaUsers] = await Promise.all([
     isAdmin
@@ -66,6 +67,7 @@ export default async function EditReportPage({
           nextWeekPlan: textToLines(report.nextWeekPlan),
           notes: report.notes ?? "",
           totalTestCase: String(report.totalTestCase),
+          totalTcExecuted: String(report.totalTcExecuted),
           totalTcBE: String(report.totalTcBE),
           totalTcBEAutomated: String(report.totalTcBEAutomated),
           totalTcBEPassed: String(report.totalTcBEPassed),

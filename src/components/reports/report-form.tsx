@@ -32,6 +32,7 @@ export type ReportFormValues = {
   nextWeekPlan: string[];
   notes: string;
   totalTestCase: string;
+  totalTcExecuted: string;
   totalTcBE: string;
   totalTcBEAutomated: string;
   totalTcBEPassed: string;
@@ -162,6 +163,9 @@ export function ReportForm({
   }
 
   const beFeTotal = (Number(values.totalTcBE) || 0) + (Number(values.totalTcFE) || 0);
+  const tcTotal = Number(values.totalTestCase) || 0;
+  const tcExecuted = Number(values.totalTcExecuted) || 0;
+  const executedPct = tcTotal > 0 ? Math.round((tcExecuted / tcTotal) * 1000) / 10 : 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -177,6 +181,7 @@ export function ReportForm({
       nextWeekPlan: values.nextWeekPlan,
       notes: values.notes,
       totalTestCase: Number(values.totalTestCase),
+      totalTcExecuted: Number(values.totalTcExecuted),
       totalTcBE: Number(values.totalTcBE),
       totalTcBEAutomated: Number(values.totalTcBEAutomated),
       totalTcBEPassed: Number(values.totalTcBEPassed),
@@ -394,7 +399,7 @@ export function ReportForm({
 
           <Section
             title="Test case"
-            description="Masukkan jumlah test case manual yang sudah dieksekusi minggu ini. Pisahkan antara backend dan frontend. Total BE + FE harus sama atau lebih besar dari jumlah total."
+            description="Nilai otomatis terisi dari report sebelumnya untuk project ini. Tidak perlu diisi ulang dari awal — cukup sesuaikan atau tambahkan jika ada test case baru minggu ini. Total BE + FE harus sama atau lebih besar dari jumlah total."
           >
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Test case total" required error={errors.totalTestCase}>
@@ -425,11 +430,29 @@ export function ReportForm({
             <p className="text-xs text-muted-foreground">
               BE + FE = {beFeTotal}
             </p>
+            <Field
+              label="TC Executed (kumulatif project)"
+              required
+              error={errors.totalTcExecuted}
+            >
+              <Input
+                type="number"
+                min={0}
+                value={values.totalTcExecuted}
+                onChange={(e) => update("totalTcExecuted", e.target.value)}
+              />
+            </Field>
+            <p className="text-xs text-muted-foreground">
+              Total TC yang sudah dieksekusi sejak awal project (bukan cuma minggu
+              ini) &mdash; dipakai untuk menghitung persentase progress project di
+              dashboard admin. Progress saat ini: {tcExecuted}/{tcTotal} (
+              {executedPct}%)
+            </p>
           </Section>
 
           <Section
             title="Automation"
-            description="Laporkan hasil eksekusi test automation minggu ini. Masukkan total test case yang di-automate, jumlah yang passed, dan jumlah yang failed untuk backend dan frontend. Total automation tidak boleh melebihi jumlah test case manual."
+            description="Nilai otomatis terisi dari report sebelumnya. Sesuaikan atau tambahkan jika ada automation baru yang di-run minggu ini (total yang di-automate, passed, dan failed) untuk backend dan frontend. Total automation tidak boleh melebihi jumlah test case manual."
           >
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-3 rounded-md border p-3">
