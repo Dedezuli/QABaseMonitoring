@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,37 +58,58 @@ export function NewReportDialog({
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [weekStart, setWeekStart] = useState(defaultWeekStart);
   const [weekEnd, setWeekEnd] = useState(defaultWeekEnd);
-  const [availability, setAvailability] = useState<Availability>({ status: "idle" });
+  const [checked, setChecked] = useState<{
+    signature: string;
+    result: Availability;
+  } | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const signature = `${projectId}|${weekStart}|${weekEnd}`;
+  const complete = !!projectId && !!weekStart && !!weekEnd;
+
+  // An invalid range is decided from the current inputs, so it renders straight
+  // away instead of waiting a round trip the server would reject anyway.
+  const rangeInvalid =
+    !!weekStart && !!weekEnd && new Date(weekEnd) < new Date(weekStart);
+
+  // Derived rather than stored, so the state can never lag behind the inputs it
+  // describes: anything not yet answered for this exact combination is pending.
+  const availability: Availability = rangeInvalid
+    ? { status: "error", message: "Tanggal akhir harus setelah tanggal mulai" }
+    : !open || !complete
+      ? { status: "idle" }
+      : checked?.signature === signature
+        ? checked.result
+        : { status: "checking" };
+
   useEffect(() => {
-    if (!open || !projectId || !weekStart || !weekEnd) return;
-    if (new Date(weekEnd) < new Date(weekStart)) {
-      setAvailability({ status: "error", message: "Tanggal akhir harus setelah tanggal mulai" });
-      return;
-    }
+    if (!open || !complete || rangeInvalid) return;
 
     let cancelled = false;
-    setAvailability({ status: "checking" });
     const timer = setTimeout(async () => {
+      const settle = (result: Availability) => {
+        if (!cancelled) setChecked({ signature, result });
+      };
       try {
         const params = new URLSearchParams({ projectId, weekStart, weekEnd });
         const res = await fetch(`/api/reports/check?${params.toString()}`);
-        const body = await res.json();
         if (cancelled) return;
         if (!res.ok) {
-          setAvailability({ status: "error", message: body?.error ?? "Gagal memeriksa periode." });
+          const { message } = await readApiError(
+            res,
+            "Gagal memeriksa ketersediaan periode."
+          );
+          settle({ status: "error", message });
           return;
         }
-        setAvailability(
+        const body = await res.json();
+        settle(
           body.available
             ? { status: "available", projectName: body.projectName }
             : { status: "conflict" }
         );
       } catch {
-        if (!cancelled) {
-          setAvailability({ status: "error", message: "Gagal memeriksa periode." });
-        }
+        settle({ status: "error", message: NETWORK_ERROR_MESSAGE });
       }
     }, 400);
 
@@ -95,13 +117,13 @@ export function NewReportDialog({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, projectId, weekStart, weekEnd]);
+  }, [open, complete, rangeInvalid, signature, projectId, weekStart, weekEnd]);
 
   function resetForm() {
     setProjectId(projects[0]?.id ?? "");
     setWeekStart(defaultWeekStart);
     setWeekEnd(defaultWeekEnd);
-    setAvailability({ status: "idle" });
+    setChecked(null);
   }
 
   async function handleCreate() {
@@ -112,13 +134,18 @@ export function NewReportDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, weekStart, weekEnd }),
       });
-      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(typeof body?.error === "string" ? body.error : "Gagal membuat report.");
+        const { message } = await readApiError(res, "Gagal membuat report.");
+        toast.error("Report gagal dibuat", { description: message });
         return;
       }
+      const body = await res.json();
       setOpen(false);
       router.push(`/reports/${body.id}/edit`);
+    } catch {
+      toast.error("Report gagal dibuat", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setCreating(false);
     }

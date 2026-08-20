@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
+import { errorResponse } from "@/lib/api-error";
 import { requireAdmin } from "@/lib/api-auth";
 import { UPLOAD_ROOT } from "@/lib/uploads";
 
@@ -14,7 +15,7 @@ export async function GET(
 
   const { id } = await params;
   const doc = await prisma.projectDocument.findUnique({ where: { id } });
-  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!doc) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
 
   const filePath = path.join(UPLOAD_ROOT, doc.filePath);
   let data: Buffer;
@@ -41,7 +42,7 @@ export async function DELETE(
 
   const { id } = await params;
   const doc = await prisma.projectDocument.findUnique({ where: { id } });
-  if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!doc) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
 
   await prisma.projectDocument.delete({ where: { id } });
   await rm(path.join(UPLOAD_ROOT, doc.filePath), { force: true });

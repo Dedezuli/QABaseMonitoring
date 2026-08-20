@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { errorResponse } from "@/lib/api-error";
 import { logActivity } from "@/lib/report-activity";
 
 export async function PATCH(
@@ -9,7 +10,7 @@ export async function PATCH(
 ) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Sesi kamu sudah berakhir. Silakan login ulang lalu coba lagi.", 401);
   }
 
   const { id } = await params;

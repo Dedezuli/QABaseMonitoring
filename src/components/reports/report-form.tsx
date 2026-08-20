@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -204,19 +205,12 @@ export function ReportForm({
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body?.error?.fieldErrors) {
-          const fieldErrors: Record<string, string> = {};
-          for (const [key, msgs] of Object.entries(body.error.fieldErrors)) {
-            if (Array.isArray(msgs) && msgs.length) fieldErrors[key] = msgs[0];
-          }
-          setErrors(fieldErrors);
-        }
-        toast.error(
-          typeof body?.error === "string"
-            ? body.error
-            : "Gagal menyimpan report. Periksa kembali data anda."
+        const { message, fieldErrors } = await readApiError(
+          res,
+          "Gagal menyimpan report. Periksa kembali data anda."
         );
+        setErrors(fieldErrors);
+        toast.error("Report gagal disimpan", { description: message });
         return;
       }
 
@@ -225,7 +219,9 @@ export function ReportForm({
       router.push(`/reports/${saved.id}`);
       router.refresh();
     } catch {
-      toast.error("Terjadi kesalahan jaringan. Coba lagi.");
+      toast.error("Report gagal disimpan", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { CheckCircle2 } from "lucide-react";
 
 export function ApproveCoauthorButton({ reportId }: { reportId: string }) {
@@ -17,14 +18,18 @@ export function ApproveCoauthorButton({ reportId }: { reportId: string }) {
         method: "PATCH",
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        toast.error(
-          typeof body?.error === "string" ? body.error : "Gagal approve."
-        );
+        const { message } = await readApiError(res, "Gagal approve.");
+        toast.error("Gagal approve sebagai co-author", {
+          description: message,
+        });
         return;
       }
       toast.success("Berhasil approve sebagai co-author");
       router.refresh();
+    } catch {
+      toast.error("Gagal approve sebagai co-author", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setLoading(false);
     }

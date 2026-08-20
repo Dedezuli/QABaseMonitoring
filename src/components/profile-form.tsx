@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,22 +32,21 @@ export function ProfileForm({
         body: JSON.stringify({ name, currentPassword, newPassword }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body?.error?.fieldErrors) {
-          const fieldErrors: Record<string, string> = {};
-          for (const [key, msgs] of Object.entries(body.error.fieldErrors)) {
-            if (Array.isArray(msgs) && msgs.length) fieldErrors[key] = msgs[0];
-          }
-          setErrors(fieldErrors);
-        }
-        toast.error(
-          typeof body?.error === "string" ? body.error : "Gagal menyimpan profil."
+        const { message, fieldErrors } = await readApiError(
+          res,
+          "Gagal menyimpan profil."
         );
+        setErrors(fieldErrors);
+        toast.error("Profil gagal disimpan", { description: message });
         return;
       }
       toast.success("Profil berhasil diperbarui");
       setCurrentPassword("");
       setNewPassword("");
+    } catch {
+      toast.error("Profil gagal disimpan", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setSubmitting(false);
     }

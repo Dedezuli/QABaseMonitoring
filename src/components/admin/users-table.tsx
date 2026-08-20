@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError } from "@/lib/api-client-error";
 import {
   Table,
   TableBody,
@@ -33,8 +34,8 @@ export function UsersTable({
   async function handleDelete(id: string) {
     const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      toast.error(body?.error ?? "Gagal menghapus user.");
+      const { message } = await readApiError(res, "Gagal menghapus user.");
+      toast.error("User gagal dihapus", { description: message });
       throw new Error("delete failed");
     }
     toast.success("User berhasil dihapus");

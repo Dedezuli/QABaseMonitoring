@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import type { ProjectStatus } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,19 +123,12 @@ export function ProjectFormDialog({
       );
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body?.error?.fieldErrors) {
-          const fieldErrors: Record<string, string> = {};
-          for (const [key, msgs] of Object.entries(body.error.fieldErrors)) {
-            if (Array.isArray(msgs) && msgs.length) fieldErrors[key] = msgs[0];
-          }
-          setErrors(fieldErrors);
-        }
-        toast.error(
-          typeof body?.error === "string"
-            ? body.error
-            : "Gagal menyimpan project."
+        const { message, fieldErrors } = await readApiError(
+          res,
+          "Gagal menyimpan project."
         );
+        setErrors(fieldErrors);
+        toast.error("Project gagal disimpan", { description: message });
         return;
       }
 
@@ -143,6 +137,10 @@ export function ProjectFormDialog({
       );
       setOpen(false);
       router.refresh();
+    } catch {
+      toast.error("Project gagal disimpan", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setSubmitting(false);
     }

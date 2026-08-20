@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { projectSchema } from "@/lib/validation";
+import { errorResponse, validationError } from "@/lib/api-error";
 import { projectUploadDir } from "@/lib/uploads";
 
 export async function GET(
@@ -21,7 +22,7 @@ export async function GET(
     },
   });
 
-  if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!project) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
   return NextResponse.json(project);
 }
 
@@ -36,10 +37,7 @@ export async function PUT(
   const body = await request.json();
   const parsed = projectSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
   const data = parsed.data;
 
@@ -55,7 +53,7 @@ export async function PUT(
     }),
   ]);
 
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!existing) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
   if (codeTaken) {
     return NextResponse.json(
       { error: "Code project sudah dipakai" },
@@ -110,7 +108,7 @@ export async function DELETE(
   try {
     await prisma.project.delete({ where: { id } });
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
   }
   await rm(projectUploadDir(id), { recursive: true, force: true });
 

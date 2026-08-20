@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import type { Role } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,25 +73,22 @@ export function UserFormDialog({
       );
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body?.error?.fieldErrors) {
-          const fieldErrors: Record<string, string> = {};
-          for (const [key, msgs] of Object.entries(body.error.fieldErrors)) {
-            if (Array.isArray(msgs) && msgs.length) fieldErrors[key] = msgs[0];
-          }
-          setErrors(fieldErrors);
-        }
-        toast.error(
-          typeof body?.error === "string"
-            ? body.error
-            : "Gagal menyimpan user."
+        const { message, fieldErrors } = await readApiError(
+          res,
+          "Gagal menyimpan user."
         );
+        setErrors(fieldErrors);
+        toast.error("User gagal disimpan", { description: message });
         return;
       }
 
       toast.success(isEdit ? "User berhasil diperbarui" : "User berhasil ditambahkan");
       setOpen(false);
       router.refresh();
+    } catch {
+      toast.error("User gagal disimpan", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setSubmitting(false);
     }

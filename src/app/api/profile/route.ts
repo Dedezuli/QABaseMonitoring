@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/api-auth";
 import { profileUpdateSchema } from "@/lib/validation";
+import { validationError } from "@/lib/api-error";
 
 export async function PUT(request: NextRequest) {
   const { user, error } = await requireSession();
@@ -11,10 +12,7 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const parsed = profileUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
   const data = parsed.data;
 

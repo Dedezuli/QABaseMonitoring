@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { projectSchema } from "@/lib/validation";
+import { validationError } from "@/lib/api-error";
 
 export async function GET() {
   const { error } = await requireAdmin();
@@ -26,10 +27,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const parsed = projectSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
   const data = parsed.data;
 

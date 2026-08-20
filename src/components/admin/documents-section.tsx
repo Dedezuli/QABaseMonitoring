@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -59,13 +60,17 @@ export function DocumentsSection({
         body: formData,
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        toast.error(body?.error ?? "Gagal upload dokumen.");
+        const { message } = await readApiError(res, "Gagal upload dokumen.");
+        toast.error("Dokumen gagal diupload", { description: message });
         return;
       }
       toast.success("Dokumen berhasil diupload");
       if (fileInputRef.current) fileInputRef.current.value = "";
       router.refresh();
+    } catch {
+      toast.error("Dokumen gagal diupload", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setUploading(false);
     }
@@ -74,7 +79,8 @@ export function DocumentsSection({
   async function handleDelete(id: string) {
     const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast.error("Gagal menghapus dokumen.");
+      const { message } = await readApiError(res, "Gagal menghapus dokumen.");
+      toast.error("Dokumen gagal dihapus", { description: message });
       throw new Error("delete failed");
     }
     toast.success("Dokumen berhasil dihapus");

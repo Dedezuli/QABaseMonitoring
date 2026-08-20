@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,13 +35,18 @@ export function DeleteReportButton({
         method: "DELETE",
       });
       if (!res.ok) {
-        toast.error("Gagal menghapus report.");
+        const { message } = await readApiError(res, "Gagal menghapus report.");
+        toast.error("Report gagal dihapus", { description: message });
         return;
       }
       toast.success("Report berhasil dihapus.");
       setOpen(false);
       router.push(redirectTo);
       router.refresh();
+    } catch {
+      toast.error("Report gagal dihapus", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setIsDeleting(false);
     }

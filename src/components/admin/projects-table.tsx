@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { readApiError } from "@/lib/api-client-error";
 import {
   Table,
   TableBody,
@@ -39,8 +40,8 @@ export function ProjectsTable({
   async function handleDelete(id: string) {
     const res = await fetch(`/api/admin/projects/${id}`, { method: "DELETE" });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      toast.error(body?.error ?? "Gagal menghapus project.");
+      const { message } = await readApiError(res, "Gagal menghapus project.");
+      toast.error("Project gagal dihapus", { description: message });
       throw new Error("delete failed");
     }
     toast.success("Project berhasil dihapus");

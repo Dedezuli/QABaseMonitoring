@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { reportSchema, reportDraftSchema } from "@/lib/validation";
+import { errorResponse, validationError } from "@/lib/api-error";
 import { linesToText } from "@/lib/report-utils";
 import { logActivity, diffFields } from "@/lib/report-activity";
 
@@ -41,14 +42,14 @@ export async function GET(
 ) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Sesi kamu sudah berakhir. Silakan login ulang lalu coba lagi.", 401);
   }
 
   const { id } = await params;
   const { report, allowed } = await loadReportForUser(id, session.user);
 
-  if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!report) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
+  if (!allowed) return errorResponse("Kamu tidak punya akses ke report ini.", 403);
 
   return NextResponse.json(report);
 }
@@ -59,13 +60,13 @@ export async function PUT(
 ) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Sesi kamu sudah berakhir. Silakan login ulang lalu coba lagi.", 401);
   }
 
   const { id } = await params;
   const { report, allowed } = await loadReportScalars(id, session.user);
-  if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!report) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
+  if (!allowed) return errorResponse("Kamu tidak punya akses ke report ini.", 403);
   if (report.status === "APPROVED" && session.user.role !== "ADMIN") {
     return NextResponse.json(
       { error: "Report yang sudah di-approve tidak bisa diedit" },
@@ -79,10 +80,7 @@ export async function PUT(
     ? reportDraftSchema.safeParse(body)
     : reportSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
   const data = parsed.data;
 
@@ -210,13 +208,13 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return errorResponse("Sesi kamu sudah berakhir. Silakan login ulang lalu coba lagi.", 401);
   }
 
   const { id } = await params;
   const { report, allowed } = await loadReportScalars(id, session.user);
-  if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!report) return errorResponse("Data tidak ditemukan. Mungkin sudah dihapus — coba muat ulang halaman.", 404);
+  if (!allowed) return errorResponse("Kamu tidak punya akses ke report ini.", 403);
   if (report.status === "APPROVED" && session.user.role !== "ADMIN") {
     return NextResponse.json(
       { error: "Report yang sudah di-approve tidak bisa dihapus" },

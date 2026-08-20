@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { CheckCircle2, RotateCcw } from "lucide-react";
 
 export function ReviewActions({ reportId }: { reportId: string }) {
@@ -26,19 +27,24 @@ export function ReviewActions({ reportId }: { reportId: string }) {
   const [submittingRevision, setSubmittingRevision] = useState(false);
 
   async function sendReview(action: "APPROVED" | "NEED_REVISION", reviewNote?: string) {
-    const res = await fetch(`/api/reports/${reportId}/review`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, note: reviewNote ?? "" }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      toast.error(
-        typeof body?.error === "string" ? body.error : "Gagal menyimpan review."
-      );
+    try {
+      const res = await fetch(`/api/reports/${reportId}/review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, note: reviewNote ?? "" }),
+      });
+      if (!res.ok) {
+        const { message } = await readApiError(res, "Gagal menyimpan review.");
+        toast.error("Review gagal disimpan", { description: message });
+        return false;
+      }
+      return true;
+    } catch {
+      toast.error("Review gagal disimpan", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
       return false;
     }
-    return true;
   }
 
   async function handleApprove() {

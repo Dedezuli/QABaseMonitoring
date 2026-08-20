@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { userUpdateSchema } from "@/lib/validation";
+import { validationError } from "@/lib/api-error";
 
 export async function PUT(
   request: NextRequest,
@@ -15,10 +16,7 @@ export async function PUT(
   const body = await request.json();
   const parsed = userUpdateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
 
   const [existing, emailTaken] = await Promise.all([

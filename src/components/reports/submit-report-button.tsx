@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { readApiError, NETWORK_ERROR_MESSAGE } from "@/lib/api-client-error";
 import { Send } from "lucide-react";
 
 export function SubmitReportButton({ reportId }: { reportId: string }) {
@@ -16,17 +17,17 @@ export function SubmitReportButton({ reportId }: { reportId: string }) {
       const res = await fetch(`/api/reports/${reportId}/submit`, {
         method: "PATCH",
       });
-      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(
-          typeof body?.error === "string"
-            ? body.error
-            : "Gagal submit report."
-        );
+        const { message } = await readApiError(res, "Gagal submit report.");
+        toast.error("Report belum bisa disubmit", { description: message });
         return;
       }
       toast.success("Report berhasil disubmit untuk review");
       router.refresh();
+    } catch {
+      toast.error("Gagal submit report", {
+        description: NETWORK_ERROR_MESSAGE,
+      });
     } finally {
       setSubmitting(false);
     }

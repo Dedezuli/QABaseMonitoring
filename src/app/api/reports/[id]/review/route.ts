@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { reviewActionSchema } from "@/lib/validation";
+import { validationError } from "@/lib/api-error";
 import { logActivity } from "@/lib/report-activity";
 
 export async function PATCH(
@@ -16,10 +17,7 @@ export async function PATCH(
   const body = await request.json();
   const parsed = reviewActionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return validationError(parsed.error);
   }
 
   if (parsed.data.action === "NEED_REVISION" && !parsed.data.note.trim()) {
