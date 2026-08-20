@@ -120,8 +120,16 @@ export default async function AdminDashboardPage({
       totalTcBEAutomated: r.totalTcBEAutomated,
       totalTcFE: r.totalTcFE,
       totalTcFEAutomated: r.totalTcFEAutomated,
+      passedCount: r.totalTcBEPassed + r.totalTcFEPassed,
+      failedCount: r.totalTcBEFailed + r.totalTcFEFailed,
       bugCount: r.bugs.length,
     }))
+  );
+
+  // Assigned from the unfiltered project list so a project keeps the same
+  // accent colour no matter which filter is active.
+  const colorIndexById = Object.fromEntries(
+    projects.map((p, i) => [p.id, i])
   );
 
   const avgProgressPct = scorecards.length
@@ -174,7 +182,10 @@ export default async function AdminDashboardPage({
           </p>
         </CardHeader>
         <CardContent className="px-0 pb-0">
-          <ProjectScorecards cards={scorecards} />
+          <ProjectScorecards
+            cards={scorecards}
+            colorIndexById={colorIndexById}
+          />
         </CardContent>
       </Card>
 

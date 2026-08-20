@@ -125,6 +125,8 @@ export type ScorecardInput = {
   totalTcBEAutomated: number;
   totalTcFE: number;
   totalTcFEAutomated: number;
+  passedCount: number;
+  failedCount: number;
   bugCount: number;
 };
 
@@ -146,6 +148,9 @@ export type ProjectScorecard = {
   totalTcFE: number;
   totalTcFEAutomated: number;
   feCoveragePct: number;
+  passedCount: number;
+  failedCount: number;
+  notExecutedCount: number;
   bugCount: number;
 };
 
@@ -181,6 +186,9 @@ export function buildProjectScorecards(
         totalTcFE: r.totalTcFE,
         totalTcFEAutomated: r.totalTcFEAutomated,
         feCoveragePct: pct(r.totalTcFEAutomated, r.totalTcFE),
+        passedCount: r.passedCount,
+        failedCount: r.failedCount,
+        notExecutedCount: Math.max(0, r.totalTestCase - r.totalTcExecuted),
         bugCount: r.bugCount,
       });
       continue;
@@ -200,6 +208,12 @@ export function buildProjectScorecards(
       existing.totalTcFE = r.totalTcFE;
       existing.totalTcFEAutomated = r.totalTcFEAutomated;
       existing.feCoveragePct = pct(r.totalTcFEAutomated, r.totalTcFE);
+      existing.passedCount = r.passedCount;
+      existing.failedCount = r.failedCount;
+      existing.notExecutedCount = Math.max(
+        0,
+        r.totalTestCase - r.totalTcExecuted
+      );
     }
   }
 
