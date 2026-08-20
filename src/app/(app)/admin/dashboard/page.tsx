@@ -2,8 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import {
-  aggregateByProject,
   aggregateByUser,
+  buildProjectScorecards,
   summarize,
   weeklyTrend,
   type ReportForAggregate,
@@ -21,6 +21,7 @@ import {
 import { PercentBar } from "@/components/percent-bar";
 import { DashboardFilters } from "@/components/admin/dashboard-filters";
 import { AutomationTrendChart } from "@/components/admin/automation-trend-chart";
+import { ProjectScorecards } from "@/components/admin/project-scorecards";
 import { StatusBadge } from "@/components/reports/status-badge";
 
 function formatDate(d: Date) {
@@ -67,7 +68,16 @@ export default async function AdminDashboardPage({
   const reports = await prisma.weeklyReport.findMany({
     where,
     include: {
-      project: { select: { id: true, name: true } },
+      project: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+        },
+      },
       user: { select: { id: true, name: true } },
       bugs: { select: { id: true } },
     },
@@ -92,28 +102,31 @@ export default async function AdminDashboardPage({
   }));
 
   const summary = summarize(forAggregate);
-  const byProject = aggregateByProject(forAggregate);
   const byUser = aggregateByUser(forAggregate);
   const trend = weeklyTrend(forAggregate);
 
-  // totalTcExecuted is cumulative per project, so it must come from each
-  // project's most recent report rather than being summed across weeks.
-  const progressByProject = new Map<
-    string,
-    { totalTestCase: number; totalTcExecuted: number; progressPct: number }
-  >();
-  for (const r of reports) {
-    if (progressByProject.has(r.project.id)) continue;
-    progressByProject.set(r.project.id, {
+  const scorecards = buildProjectScorecards(
+    reports.map((r) => ({
+      projectId: r.project.id,
+      projectName: r.project.name,
+      projectCode: r.project.code,
+      projectStatus: r.project.status,
+      startDate: r.project.startDate,
+      endDate: r.project.endDate,
+      weekStart: r.weekStart,
       totalTestCase: r.totalTestCase,
       totalTcExecuted: r.totalTcExecuted,
-      progressPct: pct(r.totalTcExecuted, r.totalTestCase),
-    });
-  }
-  const avgProgressPct = progressByProject.size
+      totalTcBE: r.totalTcBE,
+      totalTcBEAutomated: r.totalTcBEAutomated,
+      totalTcFE: r.totalTcFE,
+      totalTcFEAutomated: r.totalTcFEAutomated,
+      bugCount: r.bugs.length,
+    }))
+  );
+
+  const avgProgressPct = scorecards.length
     ? Math.round(
-        [...progressByProject.values()].reduce((sum, p) => sum + p.progressPct, 0) /
-          progressByProject.size
+        scorecards.reduce((sum, c) => sum + c.executedPct, 0) / scorecards.length
       )
     : 0;
 
@@ -151,57 +164,38 @@ export default async function AdminDashboardPage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Per Project</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {byProject.length === 0 && (
-              <p className="text-sm text-muted-foreground">Tidak ada data.</p>
-            )}
-            {byProject.map((g) => {
-              const progress = progressByProject.get(g.key);
-              return (
-                <div key={g.key} className="space-y-2">
-                  <PercentBar
-                    label={g.label}
-                    value={g.overallPct}
-                    detail={`Automation · ${g.reportCount} report, ${g.totalTestCase} TC`}
-                  />
-                  {progress && (
-                    <PercentBar
-                      label="Progress pengerjaan"
-                      value={progress.progressPct}
-                      detail={`${progress.totalTcExecuted}/${progress.totalTestCase} TC executed`}
-                      className="pl-4"
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Ringkasan per Project</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Progress dan coverage diambil dari report terbaru tiap project
+            (angkanya kumulatif), sedangkan bug production dijumlah sepanjang
+            periode yang difilter.
+          </p>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          <ProjectScorecards cards={scorecards} />
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Per QA</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {byUser.length === 0 && (
-              <p className="text-sm text-muted-foreground">Tidak ada data.</p>
-            )}
-            {byUser.map((g) => (
-              <PercentBar
-                key={g.key}
-                label={g.label}
-                value={g.overallPct}
-                detail={`${g.reportCount} report, ${g.totalTestCase} TC`}
-              />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Per QA</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {byUser.length === 0 && (
+            <p className="text-sm text-muted-foreground">Tidak ada data.</p>
+          )}
+          {byUser.map((g) => (
+            <PercentBar
+              key={g.key}
+              label={g.label}
+              value={g.overallPct}
+              detail={`${g.reportCount} report, ${g.totalTestCase} TC`}
+            />
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -1,4 +1,4 @@
-import type { ReportStatus } from "@prisma/client";
+import type { ProjectStatus, ReportStatus } from "@prisma/client";
 import { pct } from "@/lib/report-utils";
 
 export type ReportForAggregate = {
@@ -109,6 +109,101 @@ export function summarize(reports: ReportForAggregate[]) {
       return acc;
     }, emptyGroup("summary", "Semua"))
   );
+}
+
+export type ScorecardInput = {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  projectStatus: ProjectStatus;
+  startDate: Date | null;
+  endDate: Date | null;
+  weekStart: Date;
+  totalTestCase: number;
+  totalTcExecuted: number;
+  totalTcBE: number;
+  totalTcBEAutomated: number;
+  totalTcFE: number;
+  totalTcFEAutomated: number;
+  bugCount: number;
+};
+
+export type ProjectScorecard = {
+  projectId: string;
+  projectName: string;
+  projectCode: string;
+  projectStatus: ProjectStatus;
+  startDate: Date | null;
+  endDate: Date | null;
+  latestWeek: Date;
+  reportCount: number;
+  totalTestCase: number;
+  totalTcExecuted: number;
+  executedPct: number;
+  totalTcBE: number;
+  totalTcBEAutomated: number;
+  beCoveragePct: number;
+  totalTcFE: number;
+  totalTcFEAutomated: number;
+  feCoveragePct: number;
+  bugCount: number;
+};
+
+/**
+ * Test-case counters carry forward week to week, so they describe the project's
+ * standing as of its most recent report rather than something to sum. Bugs are
+ * per-week events, so those accumulate across the selected range.
+ */
+export function buildProjectScorecards(
+  rows: ScorecardInput[]
+): ProjectScorecard[] {
+  const cards = new Map<string, ProjectScorecard>();
+
+  for (const r of rows) {
+    const existing = cards.get(r.projectId);
+
+    if (!existing) {
+      cards.set(r.projectId, {
+        projectId: r.projectId,
+        projectName: r.projectName,
+        projectCode: r.projectCode,
+        projectStatus: r.projectStatus,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        latestWeek: r.weekStart,
+        reportCount: 1,
+        totalTestCase: r.totalTestCase,
+        totalTcExecuted: r.totalTcExecuted,
+        executedPct: pct(r.totalTcExecuted, r.totalTestCase),
+        totalTcBE: r.totalTcBE,
+        totalTcBEAutomated: r.totalTcBEAutomated,
+        beCoveragePct: pct(r.totalTcBEAutomated, r.totalTcBE),
+        totalTcFE: r.totalTcFE,
+        totalTcFEAutomated: r.totalTcFEAutomated,
+        feCoveragePct: pct(r.totalTcFEAutomated, r.totalTcFE),
+        bugCount: r.bugCount,
+      });
+      continue;
+    }
+
+    existing.reportCount += 1;
+    existing.bugCount += r.bugCount;
+
+    if (r.weekStart > existing.latestWeek) {
+      existing.latestWeek = r.weekStart;
+      existing.totalTestCase = r.totalTestCase;
+      existing.totalTcExecuted = r.totalTcExecuted;
+      existing.executedPct = pct(r.totalTcExecuted, r.totalTestCase);
+      existing.totalTcBE = r.totalTcBE;
+      existing.totalTcBEAutomated = r.totalTcBEAutomated;
+      existing.beCoveragePct = pct(r.totalTcBEAutomated, r.totalTcBE);
+      existing.totalTcFE = r.totalTcFE;
+      existing.totalTcFEAutomated = r.totalTcFEAutomated;
+      existing.feCoveragePct = pct(r.totalTcFEAutomated, r.totalTcFE);
+    }
+  }
+
+  return [...cards.values()].sort((a, b) => b.executedPct - a.executedPct);
 }
 
 export function weeklyTrend(reports: ReportForAggregate[]) {
