@@ -102,8 +102,13 @@ function ColumnPair({
   automated: number;
   scaleMax: number;
 }) {
+  // The plot area is a fixed height so every group shares one baseline —
+  // otherwise a group of small values collapses and its axis floats upward.
+  const maxBarHeight = 68;
   const height = (v: number) =>
-    scaleMax > 0 ? Math.max(v > 0 ? 3 : 0, (v / scaleMax) * 64) : 0;
+    scaleMax > 0 && v > 0
+      ? Math.max(3, (v / scaleMax) * maxBarHeight)
+      : 0;
 
   const bars = [
     { label: "Total", value: total, solid: false },
@@ -112,10 +117,13 @@ function ColumnPair({
 
   return (
     <div className="flex-1 space-y-1">
-      <div className="flex items-end justify-center gap-2 border-b pb-0">
+      <div className="flex h-[88px] items-end justify-center gap-2 border-b">
         {bars.map((b) => (
-          <div key={b.label} className="flex w-8 flex-col items-center gap-1">
-            <span className="text-[11px] font-medium tabular-nums">
+          <div
+            key={b.label}
+            className="flex w-8 flex-col items-center justify-end gap-1"
+          >
+            <span className="text-[11px] font-medium leading-none tabular-nums">
               {b.value}
             </span>
             <div
