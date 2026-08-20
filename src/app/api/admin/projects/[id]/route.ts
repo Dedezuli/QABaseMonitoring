@@ -33,9 +33,6 @@ export async function PUT(
   if (error) return error;
 
   const { id } = await params;
-  const existing = await prisma.project.findUnique({ where: { id } });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
   const body = await request.json();
   const parsed = projectSchema.safeParse(body);
   if (!parsed.success) {
@@ -46,9 +43,19 @@ export async function PUT(
   }
   const data = parsed.data;
 
-  const codeTaken = await prisma.project.findFirst({
-    where: { code: data.code, NOT: { id } },
-  });
+  const [existing, codeTaken, currentAssignments] = await Promise.all([
+    prisma.project.findUnique({ where: { id }, select: { id: true } }),
+    prisma.project.findFirst({
+      where: { code: data.code, NOT: { id } },
+      select: { id: true },
+    }),
+    prisma.projectAssignment.findMany({
+      where: { projectId: id },
+      select: { userId: true },
+    }),
+  ]);
+
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (codeTaken) {
     return NextResponse.json(
       { error: "Code project sudah dipakai" },
@@ -56,10 +63,6 @@ export async function PUT(
     );
   }
 
-  const currentAssignments = await prisma.projectAssignment.findMany({
-    where: { projectId: id },
-    select: { userId: true },
-  });
   const currentIds = new Set(currentAssignments.map((a) => a.userId));
   const nextIds = new Set(data.assignedUserIds);
 
@@ -104,10 +107,11 @@ export async function DELETE(
   if (error) return error;
 
   const { id } = await params;
-  const existing = await prisma.project.findUnique({ where: { id } });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  await prisma.project.delete({ where: { id } });
+  try {
+    await prisma.project.delete({ where: { id } });
+  } catch {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   await rm(projectUploadDir(id), { recursive: true, force: true });
 
   return NextResponse.json({ ok: true });

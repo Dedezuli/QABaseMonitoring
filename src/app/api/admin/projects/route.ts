@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-auth";
 import { projectSchema } from "@/lib/validation";
@@ -32,30 +33,31 @@ export async function POST(request: NextRequest) {
   }
   const data = parsed.data;
 
-  const codeTaken = await prisma.project.findUnique({ where: { code: data.code } });
-  if (codeTaken) {
-    return NextResponse.json(
-      { error: "Code project sudah dipakai" },
-      { status: 409 }
-    );
-  }
-
-  const project = await prisma.project.create({
-    data: {
-      name: data.name,
-      code: data.code,
-      description: data.description || null,
-      startDate: data.startDate ?? null,
-      endDate: data.endDate ?? null,
-      status: data.status,
-      assignments: {
-        create: data.assignedUserIds.map((userId) => ({ userId })),
+  try {
+    const project = await prisma.project.create({
+      data: {
+        name: data.name,
+        code: data.code,
+        description: data.description || null,
+        startDate: data.startDate ?? null,
+        endDate: data.endDate ?? null,
+        status: data.status,
+        assignments: {
+          create: data.assignedUserIds.map((userId) => ({ userId })),
+        },
       },
-    },
-    include: {
-      assignments: { include: { user: { select: { id: true, name: true, email: true } } } },
-    },
-  });
-
-  return NextResponse.json(project, { status: 201 });
+      include: {
+        assignments: { include: { user: { select: { id: true, name: true, email: true } } } },
+      },
+    });
+    return NextResponse.json(project, { status: 201 });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return NextResponse.json(
+        { error: "Code project sudah dipakai" },
+        { status: 409 }
+      );
+    }
+    throw e;
+  }
 }

@@ -23,6 +23,18 @@ async function loadReportForUser(
   return { report, allowed };
 }
 
+// Relations are fetched as separate round trips, so writes load only the scalar
+// columns they need for authorization and change tracking.
+async function loadReportScalars(
+  id: string,
+  user: { id: string; role: string }
+) {
+  const report = await prisma.weeklyReport.findUnique({ where: { id } });
+  if (!report) return { report: null, allowed: false };
+  const allowed = user.role === "ADMIN" || report.userId === user.id;
+  return { report, allowed };
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -51,7 +63,7 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const { report, allowed } = await loadReportForUser(id, session.user);
+  const { report, allowed } = await loadReportScalars(id, session.user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (report.status === "APPROVED" && session.user.role !== "ADMIN") {
@@ -74,32 +86,37 @@ export async function PUT(
   }
   const data = parsed.data;
 
-  if (session.user.role === "QA") {
-    const assigned = await prisma.projectAssignment.findUnique({
-      where: {
-        projectId_userId: {
-          projectId: data.projectId,
-          userId: session.user.id,
-        },
-      },
-    });
-    if (!assigned) {
-      return NextResponse.json(
-        { error: "Anda tidak di-assign ke project ini" },
-        { status: 403 }
-      );
-    }
+  const [assigned, currentCoAuthors] = await Promise.all([
+    session.user.role === "QA"
+      ? prisma.projectAssignment.findUnique({
+          where: {
+            projectId_userId: {
+              projectId: data.projectId,
+              userId: session.user.id,
+            },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    isDraft
+      ? prisma.reportCoAuthor.findMany({
+          where: { reportId: id },
+          select: { userId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  if (session.user.role === "QA" && !assigned) {
+    return NextResponse.json(
+      { error: "Anda tidak di-assign ke project ini" },
+      { status: 403 }
+    );
   }
 
   const changedFields = diffFields(report, data);
 
   const updated = await prisma.$transaction(async (tx) => {
-    await tx.productionBug.deleteMany({ where: { reportId: id } });
-
     if (isDraft) {
-      const currentCoAuthors = await tx.reportCoAuthor.findMany({
-        where: { reportId: id },
-      });
       const currentIds = new Set(currentCoAuthors.map((c) => c.userId));
       const nextIds = new Set([report.userId, ...data.coAuthorUserIds]);
 
@@ -149,6 +166,7 @@ export async function PUT(
         productionIncidentCount: data.productionIncidentCount,
         bugDocumentUrl: data.bugDocumentUrl || null,
         bugs: {
+          deleteMany: {},
           create: data.bugs
             .filter((bug) => bug.title || bug.description || bug.link)
             .map((bug) => ({
@@ -196,7 +214,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const { report, allowed } = await loadReportForUser(id, session.user);
+  const { report, allowed } = await loadReportScalars(id, session.user);
   if (!report) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (report.status === "APPROVED" && session.user.role !== "ADMIN") {

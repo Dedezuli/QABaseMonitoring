@@ -21,14 +21,17 @@ export async function PUT(
     );
   }
 
-  const existing = await prisma.user.findUnique({ where: { id } });
+  const [existing, emailTaken] = await Promise.all([
+    prisma.user.findUnique({ where: { id }, select: { role: true } }),
+    prisma.user.findFirst({
+      where: { email: parsed.data.email, NOT: { id } },
+      select: { id: true },
+    }),
+  ]);
+
   if (!existing) {
     return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
   }
-
-  const emailTaken = await prisma.user.findFirst({
-    where: { email: parsed.data.email, NOT: { id } },
-  });
   if (emailTaken) {
     return NextResponse.json(
       { error: "Email sudah dipakai user lain" },
@@ -78,19 +81,19 @@ export async function DELETE(
     );
   }
 
-  const existing = await prisma.user.findUnique({ where: { id } });
+  const [existing, adminCount] = await Promise.all([
+    prisma.user.findUnique({ where: { id }, select: { role: true } }),
+    prisma.user.count({ where: { role: "ADMIN" } }),
+  ]);
+
   if (!existing) {
     return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
   }
-
-  if (existing.role === "ADMIN") {
-    const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
-    if (adminCount <= 1) {
-      return NextResponse.json(
-        { error: "Tidak bisa menghapus admin terakhir" },
-        { status: 400 }
-      );
-    }
+  if (existing.role === "ADMIN" && adminCount <= 1) {
+    return NextResponse.json(
+      { error: "Tidak bisa menghapus admin terakhir" },
+      { status: 400 }
+    );
   }
 
   await prisma.user.delete({ where: { id } });
