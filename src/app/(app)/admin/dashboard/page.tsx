@@ -114,6 +114,7 @@ export default async function AdminDashboardPage({
       startDate: r.project.startDate,
       endDate: r.project.endDate,
       weekStart: r.weekStart,
+      updatedAt: r.updatedAt,
       totalTestCase: r.totalTestCase,
       totalTcExecuted: r.totalTcExecuted,
       totalTcBE: r.totalTcBE,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { pct } from "@/lib/report-utils";
+import { pct, pickLatestByUpdate, oneRowPerWeek } from "@/lib/report-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProjectFormDialog } from "@/components/admin/project-form-dialog";
@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ArrowRight } from "lucide-react";
 
 function formatDate(d: Date | null) {
   if (!d) return "-";
@@ -86,7 +86,7 @@ export default async function AdminProjectDetailPage({
   // Drafts are still in-progress numbers, so metrics follow the dashboard and
   // count only submitted work. The history table below still lists everything.
   const published = reports.filter((r) => r.status !== "DRAFT");
-  const latest = published[0] ?? null;
+  const latest = pickLatestByUpdate(published);
 
   const totalTestCase = latest?.totalTestCase ?? 0;
   const totalTcExecuted = latest?.totalTcExecuted ?? 0;
@@ -100,14 +100,13 @@ export default async function AdminProjectDetailPage({
   const notExecutedCount = Math.max(0, totalTestCase - totalTcExecuted);
   const bugCount = published.reduce((sum, r) => sum + r.bugs.length, 0);
 
-  const trend = [...published]
-    .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
-    .map((r) => ({
-      weekStart: r.weekStart.toISOString(),
-      progressPct: pct(r.totalTcExecuted, r.totalTestCase),
-      bePct: pct(r.totalTcBEAutomated, r.totalTcBE),
-      fePct: pct(r.totalTcFEAutomated, r.totalTcFE),
-    }));
+  // One point per week, from that week's most recently edited report.
+  const trend = oneRowPerWeek(published).map((r) => ({
+    weekStart: r.weekStart.toISOString(),
+    progressPct: pct(r.totalTcExecuted, r.totalTestCase),
+    bePct: pct(r.totalTcBEAutomated, r.totalTcBE),
+    fePct: pct(r.totalTcFEAutomated, r.totalTcFE),
+  }));
 
   const incidents = published.flatMap((r) =>
     r.bugs.map((bug) => ({
@@ -287,8 +286,19 @@ export default async function AdminProjectDetailPage({
       )}
 
       <Card>
-        <CardHeader>
-          <CardTitle>Riwayat Report ({reports.length})</CardTitle>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Riwayat Report ({reports.length})</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Menampilkan 5 report terbaru.
+            </p>
+          </div>
+          <Link
+            href={`/admin/projects/${project.id}/reports`}
+            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            Lihat semua report <ArrowRight className="size-3.5" />
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border">
@@ -315,7 +325,7 @@ export default async function AdminProjectDetailPage({
                     </TableCell>
                   </TableRow>
                 )}
-                {reports.map((r) => (
+                {reports.slice(0, 5).map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="tabular-nums">
                       {formatDate(r.weekStart)} &rarr; {formatDate(r.weekEnd)}

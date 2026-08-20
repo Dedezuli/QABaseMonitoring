@@ -66,6 +66,36 @@ export function textToLines(text: string) {
     .filter(Boolean);
 }
 
+/**
+ * A project can collect several reports for the same week — one per QA. The
+ * most recently edited one is treated as the current picture, so these helpers
+ * are the single place that rule lives.
+ */
+export function pickLatestByUpdate<T extends { updatedAt: Date }>(
+  rows: T[]
+): T | null {
+  let latest: T | null = null;
+  for (const row of rows) {
+    if (!latest || row.updatedAt > latest.updatedAt) latest = row;
+  }
+  return latest;
+}
+
+/** One row per week — the most recently updated — sorted oldest first. */
+export function oneRowPerWeek<
+  T extends { weekStart: Date; updatedAt: Date },
+>(rows: T[]): T[] {
+  const byWeek = new Map<string, T>();
+  for (const row of rows) {
+    const key = row.weekStart.toISOString().slice(0, 10);
+    const current = byWeek.get(key);
+    if (!current || row.updatedAt > current.updatedAt) byWeek.set(key, row);
+  }
+  return [...byWeek.values()].sort(
+    (a, b) => a.weekStart.getTime() - b.weekStart.getTime()
+  );
+}
+
 export function pct(numerator: number, denominator: number) {
   if (!denominator) return 0;
   return Math.round((numerator / denominator) * 1000) / 10;

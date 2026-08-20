@@ -119,6 +119,7 @@ export type ScorecardInput = {
   startDate: Date | null;
   endDate: Date | null;
   weekStart: Date;
+  updatedAt: Date;
   totalTestCase: number;
   totalTcExecuted: number;
   totalTcBE: number;
@@ -138,6 +139,7 @@ export type ProjectScorecard = {
   startDate: Date | null;
   endDate: Date | null;
   latestWeek: Date;
+  latestUpdatedAt: Date;
   reportCount: number;
   totalTestCase: number;
   totalTcExecuted: number;
@@ -156,8 +158,9 @@ export type ProjectScorecard = {
 
 /**
  * Test-case counters carry forward week to week, so they describe the project's
- * standing as of its most recent report rather than something to sum. Bugs are
- * per-week events, so those accumulate across the selected range.
+ * standing rather than something to sum. A project can have several reports for
+ * the same week (one per QA), so the counters come from whichever report was
+ * edited most recently. Bugs are per-week events, so those accumulate.
  */
 export function buildProjectScorecards(
   rows: ScorecardInput[]
@@ -176,6 +179,7 @@ export function buildProjectScorecards(
         startDate: r.startDate,
         endDate: r.endDate,
         latestWeek: r.weekStart,
+        latestUpdatedAt: r.updatedAt,
         reportCount: 1,
         totalTestCase: r.totalTestCase,
         totalTcExecuted: r.totalTcExecuted,
@@ -197,8 +201,10 @@ export function buildProjectScorecards(
     existing.reportCount += 1;
     existing.bugCount += r.bugCount;
 
-    if (r.weekStart > existing.latestWeek) {
-      existing.latestWeek = r.weekStart;
+    if (r.weekStart > existing.latestWeek) existing.latestWeek = r.weekStart;
+
+    if (r.updatedAt > existing.latestUpdatedAt) {
+      existing.latestUpdatedAt = r.updatedAt;
       existing.totalTestCase = r.totalTestCase;
       existing.totalTcExecuted = r.totalTcExecuted;
       existing.executedPct = pct(r.totalTcExecuted, r.totalTestCase);
