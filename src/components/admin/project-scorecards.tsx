@@ -1,6 +1,14 @@
+import Link from "next/link";
 import type { ProjectScorecard } from "@/lib/dashboard-aggregate";
 import { cn } from "@/lib/utils";
-import { CalendarRange, Gauge, Bot, ListChecks, Bug } from "lucide-react";
+import {
+  CalendarRange,
+  Gauge,
+  Bot,
+  ListChecks,
+  Bug,
+  ArrowRight,
+} from "lucide-react";
 
 /**
  * Fixed hue order, validated for colorblind separation and contrast against
@@ -261,12 +269,13 @@ export function ProjectScorecards({
               className="border-l border-t-[3px] border-t-[var(--hue)] bg-[var(--hue)]/10 p-4 dark:border-t-[var(--hue-dark)] dark:bg-[var(--hue-dark)]/15"
               style={hueVars(hue)}
             >
-              <div
-                className="truncate text-sm font-semibold"
+              <Link
+                href={`/admin/projects/${c.projectId}`}
+                className="block truncate text-sm font-semibold hover:underline"
                 title={c.projectName}
               >
                 {c.projectName}
-              </div>
+              </Link>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {c.projectCode} &middot; {projectStatusLabel[c.projectStatus]}
               </div>
@@ -406,6 +415,19 @@ export function ProjectScorecards({
                   : `incident dari ${c.reportCount} report`}
               </div>
             </div>
+          </Cell>
+        ))}
+
+        {/* Drill-down */}
+        <div className="sticky left-0 z-10 border-t bg-card p-4" />
+        {cards.map((c) => (
+          <Cell key={c.projectId} hue={hueFor(colorIndexById[c.projectId])}>
+            <Link
+              href={`/admin/projects/${c.projectId}`}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              Detail project <ArrowRight className="size-3.5" />
+            </Link>
           </Cell>
         ))}
       </div>
