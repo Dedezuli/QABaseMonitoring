@@ -79,6 +79,7 @@ model ProjectAssignment {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model WeeklyReport {
@@ -123,6 +124,11 @@ model WeeklyReport {
   bugs       ProductionBug[]
   coAuthors  ReportCoAuthor[]
   activities ReportActivity[]
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([status])
+  @@index([weekStart])
 }
 
 model ProductionBug {
@@ -134,6 +140,8 @@ model ProductionBug {
   createdAt   DateTime @default(now())
 
   report WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
 }
 
 model ReportCoAuthor {
@@ -148,6 +156,7 @@ model ReportCoAuthor {
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([reportId, userId])
+  @@index([userId])
 }
 
 model ReportActivity {
@@ -160,6 +169,8 @@ model ReportActivity {
 
   report WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
 }
 
 model ProjectDocument {
@@ -172,4 +183,6 @@ model ProjectDocument {
 
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
