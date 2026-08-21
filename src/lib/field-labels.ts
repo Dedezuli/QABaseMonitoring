@@ -41,6 +41,7 @@ export const fieldLabels: Record<string, string> = {
   role: "Role",
   currentPassword: "Password saat ini",
   newPassword: "Password baru",
+  confirmPassword: "Konfirmasi password baru",
 
   // Review
   action: "Aksi review",

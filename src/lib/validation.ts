@@ -154,16 +154,17 @@ export const reviewActionSchema = z.object({
   note: z.string().optional().default(""),
 });
 
-export const profileUpdateSchema = z
+export const passwordChangeSchema = z
   .object({
-    name: z.string().min(1, "Nama wajib diisi"),
-    currentPassword: z.string().optional().default(""),
-    newPassword: z
-      .union([z.string().min(6, "Password minimal 6 karakter"), z.literal("")])
-      .optional()
-      .default(""),
+    currentPassword: z.string().min(1, "Password saat ini wajib diisi"),
+    newPassword: z.string().min(8, "Password baru minimal 8 karakter"),
+    confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi"),
   })
-  .refine((data) => !data.newPassword || data.currentPassword, {
-    message: "Masukkan password saat ini untuk mengganti password",
-    path: ["currentPassword"],
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password tidak sama dengan password baru",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: "Password baru harus berbeda dari password saat ini",
+    path: ["newPassword"],
   });
