@@ -1,15 +1,6 @@
 import { ClipboardCheck } from "lucide-react";
 import { LoginForm } from "./login-form";
 
-function BrandStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex-1 rounded-xl bg-white/10 p-4">
-      <div className="font-heading text-2xl font-bold text-white">{value}</div>
-      <div className="mt-0.5 text-xs text-white/75">{label}</div>
-    </div>
-  );
-}
-
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-1">
@@ -30,7 +21,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="relative flex max-w-md flex-1 flex-col justify-center gap-4">
+        <div className="relative flex max-w-md flex-1 flex-col justify-center gap-4 pb-16">
           <h1 className="font-heading text-[32px] font-bold leading-[1.25] text-white">
             Satu tempat untuk semua laporan QA mingguan.
           </h1>
@@ -41,11 +32,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="relative mt-auto flex gap-3.5">
-          <BrandStat value="3" label="Project aktif" />
-          <BrandStat value="92%" label="Report tepat waktu" />
-          <BrandStat value="64%" label="Automation coverage" />
-        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center p-6">

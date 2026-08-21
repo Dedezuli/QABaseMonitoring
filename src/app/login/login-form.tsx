@@ -6,17 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-function DemoAccount({ role, email }: { role: string; email: string }) {
-  return (
-    <div className="flex-1 rounded-lg border p-3">
-      <div className="text-xs font-bold text-foreground/80">{role}</div>
-      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-        {email}
-      </div>
-    </div>
-  );
-}
-
 export function LoginForm() {
   const [errorMessage, formAction, isPending] = useActionState(
     authenticate,
@@ -61,17 +50,6 @@ export function LoginForm() {
           {isPending ? "Memproses..." : "Masuk"}
         </Button>
       </form>
-
-      <div className="flex items-center gap-2.5">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-[11px] text-muted-foreground">akun demo</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <div className="flex gap-2.5">
-        <DemoAccount role="QA Lead" email="admin@qaweekly.local" />
-        <DemoAccount role="QA Member" email="qa@qaweekly.local" />
-      </div>
     </div>
   );
 }

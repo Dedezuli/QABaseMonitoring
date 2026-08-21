@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { Prisma, ReportStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { pct, pickLatestByUpdate } from "@/lib/report-utils";
+import { resolvePage } from "@/lib/pagination";
+import { Pagination } from "@/components/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/reports/status-badge";
@@ -46,10 +48,11 @@ export default async function ProjectReportsPage({
     status?: string;
     from?: string;
     to?: string;
+    page?: string;
   }>;
 }) {
   const { id } = await params;
-  const { userId, status, from, to } = await searchParams;
+  const { userId, status, from, to, page: pageParam } = await searchParams;
 
   const where: Prisma.WeeklyReportWhereInput = { projectId: id };
   if (userId) where.userId = userId;
@@ -59,6 +62,18 @@ export default async function ProjectReportsPage({
     if (from) where.weekStart.gte = new Date(from);
     if (to) where.weekStart.lte = new Date(to);
   }
+
+  // Header totals describe the whole filtered set, so they are counted
+  // separately from the page of rows being rendered.
+  const [totalReports, totalBugs, allWeekStarts] = await Promise.all([
+    prisma.weeklyReport.count({ where }),
+    prisma.productionBug.count({ where: { report: where } }),
+    prisma.weeklyReport.findMany({ where, select: { weekStart: true } }),
+  ]);
+  const totalWeeks = new Set(
+    allWeekStarts.map((r) => r.weekStart.toISOString().slice(0, 10))
+  ).size;
+  const pageInfo = resolvePage(pageParam, totalReports);
 
   const [project, reports, contributors] = await Promise.all([
     prisma.project.findUnique({
@@ -74,6 +89,8 @@ export default async function ProjectReportsPage({
         coAuthors: { select: { approved: true } },
       },
       orderBy: [{ weekStart: "desc" }, { updatedAt: "desc" }],
+      skip: pageInfo.skip,
+      take: pageInfo.pageSize,
     }),
     // Everyone who has ever reported on this project, so the filter list stays
     // stable no matter which filter is currently applied. Deduped here rather
@@ -101,8 +118,6 @@ export default async function ProjectReportsPage({
     else weeks.set(key, [report]);
   }
 
-  const totalBugs = reports.reduce((sum, r) => sum + r.bugs.length, 0);
-
   return (
     <div className="space-y-6">
       <div>
@@ -119,7 +134,7 @@ export default async function ProjectReportsPage({
           </span>
         </h1>
         <p className="text-sm text-muted-foreground">
-          {reports.length} report dari {weeks.size} minggu &middot; {totalBugs} bug
+          {totalReports} report dari {totalWeeks} minggu &middot; {totalBugs} bug
           production.
         </p>
       </div>
@@ -271,6 +286,8 @@ export default async function ProjectReportsPage({
           );
         })
       )}
+
+      <Pagination info={pageInfo} itemLabel="report" />
     </div>
   );
 }

@@ -1,7 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { ProjectsTable } from "@/components/admin/projects-table";
+import { Pagination } from "@/components/pagination";
+import { resolvePage } from "@/lib/pagination";
 
-export default async function AdminProjectsPage() {
+export default async function AdminProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+
+  const totalProjects = await prisma.project.count();
+  const pageInfo = resolvePage(pageParam, totalProjects);
+
   const [projects, qaUsers] = await Promise.all([
     prisma.project.findMany({
       include: {
@@ -9,6 +20,8 @@ export default async function AdminProjectsPage() {
         _count: { select: { reports: true, documents: true } },
       },
       orderBy: { createdAt: "desc" },
+      skip: pageInfo.skip,
+      take: pageInfo.pageSize,
     }),
     prisma.user.findMany({
       where: { role: "QA" },
@@ -41,6 +54,7 @@ export default async function AdminProjectsPage() {
           documentCount: p._count.documents,
         }))}
       />
+      <Pagination info={pageInfo} itemLabel="project" />
     </div>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { ReportStatus } from "@prisma/client";
+import type { PageInfo } from "@/lib/pagination";
+import { Pagination } from "@/components/pagination";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -47,29 +49,38 @@ function formatDate(d: string) {
 export function ReportsList({
   reports,
   status,
+  query,
+  pageInfo,
 }: {
   reports: ReportListRow[];
   status?: ReportStatus;
+  query: string;
+  pageInfo: PageInfo;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(query);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return reports;
-    return reports.filter(
-      (r) =>
-        r.projectName.toLowerCase().includes(q) ||
-        r.projectCode.toLowerCase().includes(q)
-    );
-  }, [reports, search]);
+  // Searching filters the whole dataset on the server, so it has to travel in
+  // the URL — debounced to avoid a request per keystroke.
+  useEffect(() => {
+    if (search === query) return;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (search.trim()) params.set("q", search.trim());
+      else params.delete("q");
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, query, pathname, router, searchParams]);
 
   function handleStatusChange(value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value === ALL) params.delete("status");
     else params.set("status", value);
+    params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   }
 
@@ -126,14 +137,14 @@ export function ReportsList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {reports.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground">
                   Tidak ada report yang cocok.
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((r) => (
+            {reports.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.projectName}</TableCell>
                 <TableCell>
@@ -162,6 +173,8 @@ export function ReportsList({
           </TableBody>
         </Table>
       </div>
+
+      <Pagination info={pageInfo} itemLabel="report" />
     </div>
   );
 }

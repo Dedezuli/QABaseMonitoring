@@ -2,6 +2,7 @@ import type { ReportStatus } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { currentMonthRange, currentWorkWeekRange } from "@/lib/report-utils";
+import { resolvePage } from "@/lib/pagination";
 import { PeriodPicker } from "@/components/period-picker";
 import { ReportsList } from "@/components/reports/reports-list";
 import { NewReportDialog } from "@/components/reports/new-report-dialog";
@@ -11,12 +12,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function ReportsListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; status?: ReportStatus }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    status?: ReportStatus;
+    q?: string;
+    page?: string;
+  }>;
 }) {
-  const { from: fromParam, to: toParam, status } = await searchParams;
+  const {
+    from: fromParam,
+    to: toParam,
+    status,
+    q,
+    page: pageParam,
+  } = await searchParams;
   const defaults = currentMonthRange();
   const from = fromParam ?? defaults.from;
   const to = toParam ?? defaults.to;
+  const query = q?.trim() ?? "";
 
   const session = await auth();
   const userId = session!.user.id;
@@ -24,15 +38,32 @@ export default async function ReportsListPage({
 
   const statusFilter = status ?? (isAdmin ? { not: "DRAFT" as const } : undefined);
 
+  const where = {
+    ...(isAdmin ? {} : { userId }),
+    weekStart: { gte: new Date(from), lte: new Date(to) },
+    ...(statusFilter ? { status: statusFilter } : {}),
+    ...(query
+      ? {
+          project: {
+            OR: [
+              { name: { contains: query, mode: "insensitive" as const } },
+              { code: { contains: query, mode: "insensitive" as const } },
+            ],
+          },
+        }
+      : {}),
+  };
+
+  const totalReports = await prisma.weeklyReport.count({ where });
+  const pageInfo = resolvePage(pageParam, totalReports);
+
   const [reports, assignments, pendingApprovals] = await Promise.all([
     prisma.weeklyReport.findMany({
-      where: {
-        ...(isAdmin ? {} : { userId }),
-        weekStart: { gte: new Date(from), lte: new Date(to) },
-        ...(statusFilter ? { status: statusFilter } : {}),
-      },
+      where,
       include: { project: { select: { name: true, code: true } } },
       orderBy: { weekStart: "desc" },
+      skip: pageInfo.skip,
+      take: pageInfo.pageSize,
     }),
     isAdmin
       ? Promise.resolve([])
@@ -109,6 +140,8 @@ export default async function ReportsListPage({
         <CardContent>
           <ReportsList
             status={status}
+            query={query}
+            pageInfo={pageInfo}
             reports={reports.map((r) => ({
               id: r.id,
               projectName: r.project.name,

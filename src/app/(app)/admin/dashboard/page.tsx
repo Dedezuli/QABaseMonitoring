@@ -19,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PercentBar } from "@/components/percent-bar";
+import { Pagination } from "@/components/pagination";
+import { resolvePage } from "@/lib/pagination";
 import { DashboardFilters } from "@/components/admin/dashboard-filters";
 import { AutomationTrendChart } from "@/components/admin/automation-trend-chart";
 import { ProjectScorecards } from "@/components/admin/project-scorecards";
@@ -40,9 +42,10 @@ export default async function AdminDashboardPage({
     userId?: string;
     from?: string;
     to?: string;
+    page?: string;
   }>;
 }) {
-  const { projectId, userId, from, to } = await searchParams;
+  const { projectId, userId, from, to, page: pageParam } = await searchParams;
 
   const [projects, qaUsers] = await Promise.all([
     prisma.project.findMany({
@@ -131,6 +134,14 @@ export default async function AdminDashboardPage({
   // accent colour no matter which filter is active.
   const colorIndexById = Object.fromEntries(
     projects.map((p, i) => [p.id, i])
+  );
+
+  // The summary cards, chart and scorecards describe the whole filtered set,
+  // so only the detail table below is paged.
+  const pageInfo = resolvePage(pageParam, forAggregate.length);
+  const pagedReports = forAggregate.slice(
+    pageInfo.skip,
+    pageInfo.skip + pageInfo.pageSize
   );
 
   const avgProgressPct = scorecards.length
@@ -238,7 +249,7 @@ export default async function AdminDashboardPage({
                     </TableCell>
                   </TableRow>
                 )}
-                {forAggregate.map((r) => (
+                {pagedReports.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">{r.projectName}</TableCell>
                     <TableCell>{r.userName}</TableCell>
@@ -264,6 +275,7 @@ export default async function AdminDashboardPage({
               </TableBody>
             </Table>
           </div>
+          <Pagination info={pageInfo} itemLabel="report" />
         </CardContent>
       </Card>
     </div>
