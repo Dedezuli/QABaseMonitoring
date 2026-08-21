@@ -2,8 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DateRangePicker } from "@/components/date-range-picker";
 import {
   Select,
   SelectContent,
@@ -89,24 +89,18 @@ export function ProjectReportsFilters({ qaUsers }: { qaUsers: QaOption[] }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="from">Dari minggu</Label>
-        <Input
-          id="from"
-          type="date"
-          value={from}
-          onChange={(e) => apply("from", e.target.value)}
-          className="w-40"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="to">Sampai minggu</Label>
-        <Input
-          id="to"
-          type="date"
-          value={to}
-          onChange={(e) => apply("to", e.target.value)}
-          className="w-40"
+        <Label>Periode minggu</Label>
+        <DateRangePicker
+          from={from}
+          to={to}
+          align="start"
+          className="w-64"
+          onChange={(nextFrom, nextTo) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("from", nextFrom);
+            params.set("to", nextTo);
+            router.replace(`${pathname}?${params.toString()}`);
+          }}
         />
       </div>
 

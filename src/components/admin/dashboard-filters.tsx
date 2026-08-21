@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateRangePicker } from "@/components/date-range-picker";
 import {
   Select,
   SelectContent,
@@ -102,21 +102,16 @@ export function DashboardFilters({
         </Select>
       </div>
       <div className="space-y-1">
-        <Label>Dari tanggal</Label>
-        <Input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="w-40"
-        />
-      </div>
-      <div className="space-y-1">
-        <Label>Sampai tanggal</Label>
-        <Input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="w-40"
+        <Label>Periode report</Label>
+        <DateRangePicker
+          from={from}
+          to={to}
+          align="start"
+          className="w-64"
+          onChange={(nextFrom, nextTo) => {
+            setFrom(nextFrom);
+            setTo(nextTo);
+          }}
         />
       </div>
       <div className="flex gap-2">
