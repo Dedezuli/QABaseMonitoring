@@ -75,7 +75,7 @@ export function AppSidebar({
             collapsed && "justify-center"
           )}
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft font-heading text-xs font-bold text-primary-soft-foreground">
             {initials(user.name ?? "")}
           </div>
           {!collapsed && (
@@ -132,9 +132,9 @@ function NavGroup({
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-semibold transition-colors",
                 active
-                  ? "bg-muted font-medium text-foreground"
+                  ? "bg-primary-soft text-primary-soft-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 collapsed && "justify-center"
               )}

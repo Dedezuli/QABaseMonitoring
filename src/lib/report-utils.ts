@@ -7,24 +7,22 @@ export const reportStatusMeta: Record<
   DRAFT: {
     label: "Draft",
     description: "Belum disubmit ke QA Lead",
-    badgeClass: "bg-muted text-muted-foreground",
+    badgeClass: "bg-status-draft text-status-draft-foreground",
   },
   SUBMITTED: {
     label: "Submitted",
     description: "Menunggu review & approval dari QA Lead",
-    badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400",
+    badgeClass: "bg-status-submitted text-status-submitted-foreground",
   },
   NEED_REVISION: {
     label: "Need Revision",
     description: "Perlu direvisi sesuai catatan QA Lead",
-    badgeClass:
-      "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
+    badgeClass: "bg-status-revision text-status-revision-foreground",
   },
   APPROVED: {
     label: "Approved",
     description: "Sudah disetujui QA Lead",
-    badgeClass:
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+    badgeClass: "bg-status-approved text-status-approved-foreground",
   },
 };
 
